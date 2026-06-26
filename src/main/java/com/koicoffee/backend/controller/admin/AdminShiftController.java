@@ -12,7 +12,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/shifts")
-@CrossOrigin(origins = "*")
 public class AdminShiftController {
 
     @Autowired

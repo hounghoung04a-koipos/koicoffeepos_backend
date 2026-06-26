@@ -13,7 +13,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/categories")
-@CrossOrigin(origins = "*")
 public class AdminCategoryController {
 
     @Autowired
