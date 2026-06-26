@@ -13,7 +13,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                // 🚀 Bỏ dấu "*" và đưa link Production vào để bảo mật và tránh lỗi CORS WebSocket
                 .setAllowedOriginPatterns(
                         "https://koi-coffee-frontend.vercel.app",
                         "https://koicoffee.id.vn",
