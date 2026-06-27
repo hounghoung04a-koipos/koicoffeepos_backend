@@ -13,7 +13,7 @@ public class CashRegister {
     private Long id;
 
     @Column(nullable = false)
-    private Integer balance = 0;
+    private Long balance = 0L;
 
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;

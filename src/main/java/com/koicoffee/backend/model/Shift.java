@@ -23,22 +23,22 @@ public class Shift {
     private String status = "OPEN";
 
     @Column(name = "initial_cash")
-    private Integer initialCash = 0;
+    private Long initialCash = 0L;
 
     @Column(name = "batch_cash_revenue")
-    private Integer batchCashRevenue = 0;
+    private Long batchCashRevenue = 0L;
 
     @Column(name = "transfer_revenue")
-    private Integer transferRevenue = 0;
+    private Long transferRevenue = 0L;
 
     @Column(name = "actual_cash")
-    private Integer actualCash = 0;
+    private Long actualCash = 0L;
 
     @Column(name = "variance")
-    private Integer variance = 0;
+    private Long variance = 0L;
 
     @Column(name = "total_revenue")
-    private Integer totalRevenue = 0;
+    private Long totalRevenue = 0L;
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;

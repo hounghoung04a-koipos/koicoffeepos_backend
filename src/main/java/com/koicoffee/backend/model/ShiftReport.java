@@ -22,22 +22,22 @@ public class ShiftReport {
     private String staffName;
 
     @Column(name = "initial_cash")
-    private Integer initialCash;
+    private Long initialCash;
 
     @Column(name = "cash_revenue")
-    private Integer cashRevenue;
+    private Long cashRevenue;
 
     @Column(name = "transfer_revenue")
-    private Integer transferRevenue;
+    private Long transferRevenue;
 
     @Column(name = "total_revenue")
-    private Integer totalRevenue;
+    private Long totalRevenue;
 
     @Column(name = "actual_cash")
-    private Integer actualCash;
+    private Long actualCash;
 
     @Column(name = "variance")
-    private Integer variance;
+    private Long variance;
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;

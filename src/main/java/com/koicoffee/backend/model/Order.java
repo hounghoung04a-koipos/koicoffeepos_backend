@@ -38,10 +38,10 @@ public class Order {
     private String status;
 
     @Column(name = "total_price")
-    private Integer totalPrice;
+    private Long totalPrice;
 
-    @Column(name = "discount", columnDefinition = "integer default 0")
-    private Integer discount = 0;
+    @Column(name = "discount", columnDefinition = "bigint default 0")
+    private Long discount = 0L;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("order")

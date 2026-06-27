@@ -46,7 +46,6 @@ public class ShiftController {
         if (currentShift.isPresent()) {
             response.put("data", currentShift.get());
         } else {
-            // SỬA Ở ĐÂY: Trả về 200 OK nhưng data là null để trình duyệt không báo lỗi 404
             response.put("data", null);
             response.put("message", "Chưa có ca nào được mở");
         }
@@ -65,7 +64,8 @@ public class ShiftController {
             return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng kết thúc ca hiện tại trước khi mở ca mới!"));
         }
 
-        int initialCash = Integer.parseInt(String.valueOf(payload.getOrDefault("initialCash", "0")));
+        // Đổi sang Long
+        long initialCash = Long.parseLong(String.valueOf(payload.getOrDefault("initialCash", "0")));
 
         Shift shift = new Shift();
         shift.setStatus("OPEN");
@@ -101,18 +101,19 @@ public class ShiftController {
         Shift shift = currentShiftOpt.get();
         LocalDateTime now = LocalDateTime.now();
 
-        int actualCashInput = Integer.parseInt(String.valueOf(payload.getOrDefault("actualCash", "0")));
+        // Đổi sang Long
+        long actualCashInput = Long.parseLong(String.valueOf(payload.getOrDefault("actualCash", "0")));
         String note = payload.get("note") != null ? String.valueOf(payload.get("note")) : "";
 
-        Integer cashRev = orderRepository.calculateRevenueSince("CASH", shift.getStartTime());
-        Integer transRev = orderRepository.calculateRevenueSince("TRANSFER", shift.getStartTime());
+        Long cashRev = orderRepository.calculateRevenueSince("CASH", shift.getStartTime());
+        Long transRev = orderRepository.calculateRevenueSince("TRANSFER", shift.getStartTime());
 
-        int cashRevenue = (cashRev != null) ? cashRev : 0;
-        int transferRevenue = (transRev != null) ? transRev : 0;
-        int totalRevenue = cashRevenue + transferRevenue;
+        long cashRevenue = (cashRev != null) ? cashRev : 0L;
+        long transferRevenue = (transRev != null) ? transRev : 0L;
+        long totalRevenue = cashRevenue + transferRevenue;
 
-        int expectedCash = shift.getInitialCash() + cashRevenue;
-        int variance = actualCashInput - expectedCash;
+        long expectedCash = shift.getInitialCash() + cashRevenue;
+        long variance = actualCashInput - expectedCash;
 
         shift.setBatchCashRevenue(cashRevenue);
         shift.setTransferRevenue(transferRevenue);
@@ -146,9 +147,10 @@ public class ShiftController {
     // ========================================================
     @GetMapping("/latest-cash")
     public Map<String, Object> getLatestShiftCash() {
-        int currentBalance = cashRegisterRepository.findById(1L)
+        // Đổi sang Long
+        long currentBalance = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getBalance)
-                .orElse(0);
+                .orElse(0L);
 
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
