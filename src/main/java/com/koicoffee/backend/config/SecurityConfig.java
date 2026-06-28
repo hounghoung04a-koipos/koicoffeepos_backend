@@ -36,7 +36,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-                "https://koi-coffee-frontend.vercel.app",
+                "https://koicoffeepos.vercel.app",
                 "https://koicoffee.id.vn",
                 "https://www.koicoffee.id.vn"
         ));

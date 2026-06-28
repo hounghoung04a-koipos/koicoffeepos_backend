@@ -11,7 +11,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(
-                        "https://koi-coffee-frontend.vercel.app",
+                        "https://koicoffeepos.vercel.app",
                         "https://koicoffee.id.vn",
                         "https://www.koicoffee.id.vn"
                 )

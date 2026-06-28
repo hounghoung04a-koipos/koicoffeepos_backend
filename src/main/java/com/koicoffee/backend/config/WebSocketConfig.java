@@ -14,7 +14,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
-                        "https://koi-coffee-frontend.vercel.app",
+                        "https://koicoffeepos.vercel.app",
                         "https://koicoffee.id.vn",
                         "https://www.koicoffee.id.vn"
                 )
