@@ -30,4 +30,7 @@ public class User {
 
     @Column(name = "is_active", columnDefinition = "boolean default true")
     private Boolean isActive = true;
+
+    @Column(name = "current_session_id")
+    private String currentSessionId;
 }
