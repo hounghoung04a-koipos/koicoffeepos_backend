@@ -23,11 +23,10 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Cấu hình rõ ràng: Luôn luôn mở khóa cho API Ping giữ Server thức
-                        .requestMatchers("/api/system/ping").permitAll()
-
-                        // Các API còn lại hiện tại vẫn đang mở tự do
-                        .anyRequest().permitAll()
+                // Cấu hình rõ ràng: Luôn luôn mở khóa cho API Ping giữ Server thức
+                .requestMatchers("/api/system/ping").permitAll()
+                // Các API còn lại hiện tại vẫn đang mở tự do
+                .anyRequest().permitAll()
                 );
         return http.build();
     }
@@ -57,5 +56,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
-
+}
