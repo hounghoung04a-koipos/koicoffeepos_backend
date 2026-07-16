@@ -37,7 +37,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "https://koicoffeepos-frontend.vercel.app", // 🚀 Đã thêm domain đúng
                 "https://koicoffeepos.vercel.app",
-                "https://koicoffee.id.vn",
+                "https://koicoffeepos.id.vn",
                 "https://www.koicoffee.id.vn",
                 "http://localhost:5173", // 🚀 Cho phép chạy dưới local
                 "http://localhost:3000"
