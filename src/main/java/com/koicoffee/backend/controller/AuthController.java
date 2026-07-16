@@ -10,12 +10,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -44,7 +44,7 @@ public class AuthController {
 
             // Lọc lại
             Optional<User> userOpt = allUsers.stream()
-                    .filter(u -> u.getUsername().trim().equals(username.trim())) // Thêm .trim() để xóa khoảng trắng
+                    .filter(u -> u.getUsername().trim().equals(username.trim()))
                     .findFirst();
 
             if (userOpt.isEmpty()) {
@@ -68,10 +68,10 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
 
-            // 🚀 Sinh mã Session ngẫu nhiên và lưu trực tiếp vào Database
+            // Sinh mã Session ngẫu nhiên và lưu trực tiếp vào Database
             String sessionId = UUID.randomUUID().toString();
             foundUser.setCurrentSessionId(sessionId);
-            userRepository.save(foundUser); // Lombok @Data tự động hỗ trợ setCurrentSessionId()
+            userRepository.save(foundUser);
 
             Map<String, Object> userData = new HashMap<>();
             userData.put("id", foundUser.getId());
@@ -83,7 +83,7 @@ public class AuthController {
             response.put("status", "success");
             response.put("data", userData);
 
-            // 🚀 Gửi lệnh KICKOUT máy cũ
+            // Gửi lệnh KICKOUT máy cũ
             messagingTemplate.convertAndSend("/topic/kickout/" + foundUser.getId(), sessionId);
 
             return ResponseEntity.ok(response);
@@ -91,15 +91,10 @@ public class AuthController {
         } catch (Exception e) {
             response.put("status", "error");
             response.put("message", "Lỗi hệ thống không xác định!");
-
-            return ResponseE
-            
-
-            ntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
-    // 🚀 THÊM MỚI: API kiểm tra tính hợp lệ của Session khi Frontend Load trang
     @PostMapping("/verify-session")
     public ResponseEntity<Map<String, Object>> verifySession(@RequestBody Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
@@ -118,16 +113,19 @@ public class AuthController {
                     response.put("message", "Session hợp lệ");
                     return ResponseEntity.ok(response);
                 }
+            }
 
-                // Nếu không khớp hoặc user không tồn tại -> Trả về lỗi 401 Unauthorized
-                response.put("status", "error");
-                response.put("message", "Session đã hết hạn hoặc được đăng nhập ở nơi khác.");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-
-            }catch (Exception e) {
+            // Nếu không khớp hoặc user không tồn tại -> Trả về lỗi 401 Unauthorized
             response.put("status", "error");
+            response.put("message", "Session đã hết hạn hoặc được đăng nhập ở nơi khác.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Lỗi hệ thống");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-        
-
-    }
+    
+ 
+  }
+}
