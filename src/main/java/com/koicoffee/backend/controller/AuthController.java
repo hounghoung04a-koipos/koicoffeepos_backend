@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
+
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -34,11 +35,20 @@ public class AuthController {
             String username = credentials.get("username");
             String password = credentials.get("password");
 
-            Optional<User> userOpt = userRepository.findAll().stream()
-                    .filter(u -> u.getUsername().equals(username))
+            // Lấy toàn bộ danh sách để kiểm tra
+            List<User> allUsers = userRepository.findAll();
+            System.out.println("DEBUG: Số lượng user trong DB: " + allUsers.size());
+            for (User u : allUsers) {
+                System.out.println("DEBUG: User trong DB là: '" + u.getUsername() + "'");
+            }
+
+            // Lọc lại
+            Optional<User> userOpt = allUsers.stream()
+                    .filter(u -> u.getUsername().trim().equals(username.trim())) // Thêm .trim() để xóa khoảng trắng
                     .findFirst();
 
             if (userOpt.isEmpty()) {
+                System.out.println("❌ LỖI: Không tìm thấy username '" + username + "' trong DB.");
                 response.put("status", "error");
                 response.put("message", "Sai tên đăng nhập hoặc mật khẩu!");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
@@ -81,7 +91,11 @@ public class AuthController {
         } catch (Exception e) {
             response.put("status", "error");
             response.put("message", "Lỗi hệ thống không xác định!");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+
+            return ResponseE
+            
+
+            ntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -101,19 +115,19 @@ public class AuthController {
                 // Kiểm tra xem sessionId gửi lên có khớp với sessionId đang lưu trong DB không
                 if (sessionId != null && sessionId.equals(user.getCurrentSessionId())) {
                     response.put("status", "success");
-                               response.put("message", "Session hợp lệ");
+                    response.put("message", "Session hợp lệ");
                     return ResponseEntity.ok(response);
                 }
-            }
 
-            // Nếu không khớp hoặc user không tồn tại -> Trả về lỗi 401 Unauthorized
-            response.put("status", "error");
-            response.put("message", "Session đã hết hạn hoặc được đăng nhập ở nơi khác.");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+                // Nếu không khớp hoặc user không tồn tại -> Trả về lỗi 401 Unauthorized
+                response.put("status", "error");
+                response.put("message", "Session đã hết hạn hoặc được đăng nhập ở nơi khác.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
 
-        } catch (Exception e) {
+            }catch (Exception e) {
             response.put("status", "error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+        
+
     }
-}
