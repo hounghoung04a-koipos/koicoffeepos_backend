@@ -1,41 +1,47 @@
-﻿package com.koicoffee.backend.controller;
-
-import com.koicoffee.backend.model.CashRegister;
-import com.koicoffee.backend.model.Order;
-import com.koicoffee.backend.model.OrderDetail;
-import com.koicoffee.backend.model.Product;
-import com.koicoffee.backend.repository.CashRegisterRepository;
-import com.koicoffee.backend.repository.OrderDetailRepository;
-import com.koicoffee.backend.repository.OrderRepository;
-import com.koicoffee.backend.repository.ProductRepository;
-import com.koicoffee.backend.model.Shift;
-import com.koicoffee.backend.repository.ShiftRepository;
-import com.koicoffee.backend.model.Shift;
-import com.koicoffee.backend.repository.ShiftRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
-import com.koicoffee.backend.repository.OrderSpecification;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.data.jpa.domain.Specification;
-import java.time.LocalTime;
+package com.koicoffee.backend.controller;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.koicoffee.backend.model.CashRegister;
+import com.koicoffee.backend.model.Order;
+import com.koicoffee.backend.model.OrderDetail;
+import com.koicoffee.backend.model.Product;
+import com.koicoffee.backend.model.Shift;
+import com.koicoffee.backend.repository.CashRegisterRepository;
+import com.koicoffee.backend.repository.OrderDetailRepository;
+import com.koicoffee.backend.repository.OrderRepository;
+import com.koicoffee.backend.repository.OrderSpecification;
+import com.koicoffee.backend.repository.ProductRepository;
+import com.koicoffee.backend.repository.ShiftRepository;
+
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
 
-    @Autowired
-    private ShiftRepository shiftRepository;
     @Autowired
     private OrderRepository orderRepository;
 
@@ -76,35 +82,30 @@ public class OrderController {
         }
     }
 
-        @GetMapping
+    @GetMapping
     public Map<String, Object> getOrdersForPOS(
-            @RequestParam(defaultValue = "0") int days, // 0 = HÃ´m nay, 3 = 3 ngÃ y qua
-            @RequestParam(defaultValue = "CURRENT") String shift, // CURRENT hoáº·c PREVIOUS
+            @RequestParam(defaultValue = "0") int days, // 0 = Hôm nay, 3 = 3 ngày qua
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
     ) {
+        // Bắt đầu từ 00:00:00 của 'days' ngày trước
+        LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+
+        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
                 .orElse(LocalDateTime.MIN);
 
-        Specification<Order> spec;
-        if ("CURRENT".equalsIgnoreCase(shift)) {
-            // Ca hiá»‡n táº¡i: tá»« lastShiftEnd Ä‘áº¿n nay
-            spec = OrderSpecification.filterOrders(lastShiftEnd, null, null, null);
-        } else {
-            // Ca trÆ°á»›c: tá»« startDate Ä‘áº¿n lastShiftEnd
-            LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
-            spec = OrderSpecification.filterOrders(startDate, lastShiftEnd, null, null);
-        }
-
-        Page<Order> page = orderRepository.findAll(spec, pageable);
-
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
+        // Trả về Meta Data cho Frontend làm nút Phân trang
         response.put("data", page.getContent());
         response.put("totalPages", page.getTotalPages());
         response.put("totalElements", page.getTotalElements());
         response.put("currentPage", page.getNumber());
         response.put("lastShiftEnd", lastShiftEnd);
+
         return response;
     }
 
@@ -456,4 +457,3 @@ public class OrderController {
         return response;
     }
 }
-
