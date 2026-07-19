@@ -82,29 +82,39 @@ public class OrderController {
         }
     }
 
+    // ĐÃ FIX: Bổ sung tham số shiftType và tính toán endDate
     @GetMapping
     public Map<String, Object> getOrdersForPOS(
-            @RequestParam(defaultValue = "0") int days, // 0 = Hôm nay, 3 = 3 ngày qua
+            @RequestParam(defaultValue = "CURRENT") String shiftType,
+            @RequestParam(defaultValue = "0") int days,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
     ) {
-        // Lấy thời gian chốt ca gần nhất
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
                 .orElse(LocalDateTime.MIN);
 
-        LocalDateTime startDate;
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
 
-        if (days == 0) {
-            // NẾU LÀ HÔM NAY: Lấy từ thời điểm chốt ca gần nhất (Đúng nghĩa "Ca hiện tại")
-            // Hoặc lấy từ đầu ngày hôm nay (tuỳ cái nào gần hơn)
-            LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
-            startDate = lastShiftEnd.isAfter(startOfDay) ? lastShiftEnd : startOfDay;
-        } else {
-            // CÁC NGÀY TRƯỚC: Lấy theo ngày (ví dụ 3 ngày trước)
-            startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+        if ("CURRENT".equalsIgnoreCase(shiftType)) {
+            // CA HIỆN TẠI: Bắt đầu từ lúc chốt ca gần nhất đến bây giờ
+            startDate = lastShiftEnd;
+            endDate = LocalDateTime.now();
+        } else if ("PREVIOUS".equalsIgnoreCase(shiftType)) {
+            // CA TRƯỚC ĐÓ: Kết thúc bắt buộc tại thời điểm chốt ca
+            endDate = lastShiftEnd;
+
+            if (days == 0) {
+                // Hôm nay: Từ đầu ngày hôm nay đến lúc chốt ca
+                startDate = LocalDateTime.now().with(LocalTime.MIN);
+            } else {
+                // X ngày trước: Từ đầu ngày của X ngày trước đến lúc chốt ca
+                startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+            }
         }
 
-        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
+        // Truyền cả startDate và endDate xuống OrderSpecification
+        Specification<Order> spec = OrderSpecification.filterOrders(startDate, endDate, null, null);
         Page<Order> page = orderRepository.findAll(spec, pageable);
 
         Map<String, Object> response = new HashMap<>();
@@ -113,7 +123,7 @@ public class OrderController {
         response.put("totalPages", page.getTotalPages());
         response.put("totalElements", page.getTotalElements());
         response.put("currentPage", page.getNumber());
-        response.put("lastShiftEnd", lastShiftEnd); // Frontend dùng cái này để tham chiếu
+        response.put("lastShiftEnd", lastShiftEnd);
 
         return response;
     }
@@ -144,14 +154,12 @@ public class OrderController {
         return response;
     }
 
-    // SỬA LỖI TỬ HUYỆT: Không dùng orderRepository.findAll() nữa
     @GetMapping("/shift-summary")
     public Map<String, Object> getShiftSummary() {
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
                 .orElse(LocalDateTime.MIN);
 
-        // Chỉ lấy những đơn hàng ĐÃ THANH TOÁN sau thời gian chốt ca
         List<Order> shiftOrders = orderRepository.findPaidOrdersSince(lastShiftEnd);
 
         long totalCash = 0;
@@ -276,7 +284,6 @@ public class OrderController {
         return response;
     }
 
-    // --- CÁC ENDPOINT THAO TÁC NHANH ---
     @PutMapping("/{id}/status")
     @Transactional
     public Map<String, Object> changeOrderStatus(@PathVariable Long id, @RequestParam String status) {
@@ -316,7 +323,6 @@ public class OrderController {
         return response;
     }
 
-    // API MỚI: KHÔI PHỤC ĐƠN HÀNG SAU KHI HỦY
     @PutMapping("/{id}/restore")
     @Transactional
     public Map<String, Object> restoreOrder(@PathVariable Long id) {
