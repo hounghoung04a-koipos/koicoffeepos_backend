@@ -35,17 +35,6 @@ public class AdminOrderController {
     private SimpMessagingTemplate messagingTemplate;
 
     @GetMapping
-    public Map<String, Object> getAllOrders() {
-        List<Order> orders = orderRepository.findAll();
-        orders.sort((o1, o2) -> o2.getId().compareTo(o1.getId()));
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("data", orders);
-        return response;
-    }
-
-    @GetMapping
     public Map<String, Object> getAdminOrders(
             @RequestParam(defaultValue = "TODAY") String filterType, // TODAY, WEEK, MONTH, YEAR, CUSTOM
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
