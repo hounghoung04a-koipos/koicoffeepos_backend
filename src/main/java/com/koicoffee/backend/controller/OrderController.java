@@ -1,4 +1,4 @@
-package com.koicoffee.backend.controller;
+﻿package com.koicoffee.backend.controller;
 
 import com.koicoffee.backend.model.CashRegister;
 import com.koicoffee.backend.model.Order;
@@ -76,59 +76,35 @@ public class OrderController {
         }
     }
 
-    @GetMapping
+        @GetMapping
     public Map<String, Object> getOrdersForPOS(
-            @RequestParam(defaultValue = "0") int days, // 0 = Hôm nay, 3 = 3 ngày qua
+            @RequestParam(defaultValue = "0") int days, // 0 = HÃ´m nay, 3 = 3 ngÃ y qua
+            @RequestParam(defaultValue = "CURRENT") String shift, // CURRENT hoáº·c PREVIOUS
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
     ) {
-        // Bắt đầu từ 00:00:00 của 'days' ngày trước
-        LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
-
-        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
-        Page<Order> page = orderRepository.findAll(spec, pageable);
-
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
                 .orElse(LocalDateTime.MIN);
 
+        Specification<Order> spec;
+        if ("CURRENT".equalsIgnoreCase(shift)) {
+            // Ca hiá»‡n táº¡i: tá»« lastShiftEnd Ä‘áº¿n nay
+            spec = OrderSpecification.filterOrders(lastShiftEnd, null, null, null);
+        } else {
+            // Ca trÆ°á»›c: tá»« startDate Ä‘áº¿n lastShiftEnd
+            LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+            spec = OrderSpecification.filterOrders(startDate, lastShiftEnd, null, null);
+        }
+
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
-        // Trả về Meta Data cho Frontend làm nút Phân trang
         response.put("data", page.getContent());
         response.put("totalPages", page.getTotalPages());
         response.put("totalElements", page.getTotalElements());
-
-        @GetMapping("/current-shift")
-        public Map<String, Object> getOrdersForCurrentShift
-        (
-            @RequestParam(required = false)
-        String status,
-            @RequestParam(required = false) String keyword,
-            @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
-        
-            ) {
-        LocalDateTime shiftStart = shiftRepository.findFirstByStatusOrderByStartTimeDesc("OPEN")
-                    .map(Shift::getStartTime)
-                    .orElseGet(() -> cashRegisterRepository.findById(1L)
-                    .map(CashRegister::getLastUpdated)
-                    .orElse(LocalDateTime.MIN));
-
-            Specification<Order> spec = OrderSpecification.filterOrders(shiftStart, null, status, keyword);
-            Page<Order> page = orderRepository.findAll(spec, pageable);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("data", page.getContent());
-            response.put("totalPages", page.getTotalPages());
-            response.put("totalElements", page.getTotalElements());
-            response.put("currentPage", page.getNumber());
-            response.put("shiftStart", shiftStart);
-
-            return response;
-        }
         response.put("currentPage", page.getNumber());
         response.put("lastShiftEnd", lastShiftEnd);
-
         return response;
     }
 
