@@ -1,12 +1,14 @@
 package com.koicoffee.backend.repository;
 
-import com.koicoffee.backend.model.Order;
-import org.springframework.data.jpa.domain.Specification;
-import jakarta.persistence.criteria.Predicate;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import com.koicoffee.backend.model.Order;
+
+import jakarta.persistence.criteria.Predicate;
 
 public class OrderSpecification {
 
@@ -14,7 +16,7 @@ public class OrderSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Lọc theo khoảng thời gian
+            // Lọc theo khoảng thời gian chuẩn xác
             if (startDate != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
             }
@@ -32,7 +34,6 @@ public class OrderSpecification {
                 predicates.add(cb.like(cb.lower(root.get("code")), "%" + keyword.toLowerCase() + "%"));
             }
 
-            // Đảm bảo không bị trùng lặp dữ liệu khi dùng JOIN FETCH
             query.distinct(true);
 
             return cb.and(predicates.toArray(new Predicate[0]));
