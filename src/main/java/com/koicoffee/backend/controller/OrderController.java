@@ -8,6 +8,10 @@ import com.koicoffee.backend.repository.CashRegisterRepository;
 import com.koicoffee.backend.repository.OrderDetailRepository;
 import com.koicoffee.backend.repository.OrderRepository;
 import com.koicoffee.backend.repository.ProductRepository;
+import com.koicoffee.backend.model.Shift;
+import com.koicoffee.backend.repository.ShiftRepository;
+import com.koicoffee.backend.model.Shift;
+import com.koicoffee.backend.repository.ShiftRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +35,12 @@ import java.util.Map;
 public class OrderController {
 
     @Autowired
+    private ShiftRepository shiftRepository;
+    @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private ShiftRepository shiftRepository;
 
     @Autowired
     private ProductRepository productRepository;
@@ -88,8 +97,63 @@ public class OrderController {
         response.put("data", page.getContent());
         response.put("totalPages", page.getTotalPages());
         response.put("totalElements", page.getTotalElements());
+
+        @GetMapping("/current-shift")
+        public Map<String, Object> getOrdersForCurrentShift
+        (
+            @RequestParam(required = false)
+        String status,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
+        
+            ) {
+        LocalDateTime shiftStart = shiftRepository.findFirstByStatusOrderByStartTimeDesc("OPEN")
+                    .map(Shift::getStartTime)
+                    .orElseGet(() -> cashRegisterRepository.findById(1L)
+                    .map(CashRegister::getLastUpdated)
+                    .orElse(LocalDateTime.MIN));
+
+            Specification<Order> spec = OrderSpecification.filterOrders(shiftStart, null, status, keyword);
+            Page<Order> page = orderRepository.findAll(spec, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("data", page.getContent());
+            response.put("totalPages", page.getTotalPages());
+            response.put("totalElements", page.getTotalElements());
+            response.put("currentPage", page.getNumber());
+            response.put("shiftStart", shiftStart);
+
+            return response;
+        }
         response.put("currentPage", page.getNumber());
         response.put("lastShiftEnd", lastShiftEnd);
+
+        return response;
+    }
+
+    @GetMapping("/current-shift")
+    public Map<String, Object> getOrdersForCurrentShift(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
+    ) {
+        LocalDateTime shiftStart = shiftRepository.findFirstByStatusOrderByStartTimeDesc("OPEN")
+                .map(Shift::getStartTime)
+                .orElseGet(() -> cashRegisterRepository.findById(1L)
+                .map(CashRegister::getLastUpdated)
+                .orElse(LocalDateTime.MIN));
+
+        Specification<Order> spec = OrderSpecification.filterOrders(shiftStart, null, status, keyword);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("data", page.getContent());
+        response.put("totalPages", page.getTotalPages());
+        response.put("totalElements", page.getTotalElements());
+        response.put("currentPage", page.getNumber());
+        response.put("shiftStart", shiftStart);
 
         return response;
     }
@@ -227,7 +291,6 @@ public class OrderController {
     }
 
     // --- CÁC ENDPOINT THAO TÁC NHANH ---
-
     @PutMapping("/{id}/status")
     @Transactional
     public Map<String, Object> changeOrderStatus(@PathVariable Long id, @RequestParam String status) {
@@ -311,8 +374,12 @@ public class OrderController {
         int totalParentQty = parentOrder.getOrderDetails().stream().mapToInt(OrderDetail::getQuantity).sum();
         int totalSplitQty = splitItems.stream().mapToInt(item -> parseIntSafe(item.get("quantity"))).sum();
 
-        if (totalParentQty <= 1) throw new RuntimeException("Đơn hàng chỉ có 1 sản phẩm, không thể tách!");
-        if (totalSplitQty >= totalParentQty) throw new RuntimeException("Không thể tách toàn bộ đơn hàng!");
+        if (totalParentQty <= 1) {
+            throw new RuntimeException("Đơn hàng chỉ có 1 sản phẩm, không thể tách!");
+        }
+        if (totalSplitQty >= totalParentQty) {
+            throw new RuntimeException("Không thể tách toàn bộ đơn hàng!");
+        }
 
         long splitCount = orderRepository.findAll().stream()
                 .filter(o -> parentOrder.getId().equals(o.getParentOrderId()))
@@ -413,3 +480,4 @@ public class OrderController {
         return response;
     }
 }
+
