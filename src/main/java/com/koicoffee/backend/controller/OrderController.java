@@ -87,24 +87,33 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int days, // 0 = Hôm nay, 3 = 3 ngày qua
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
     ) {
-        // Bắt đầu từ 00:00:00 của 'days' ngày trước
-        LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
-
-        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
-        Page<Order> page = orderRepository.findAll(spec, pageable);
-
+        // Lấy thời gian chốt ca gần nhất
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
                 .orElse(LocalDateTime.MIN);
 
+        LocalDateTime startDate;
+
+        if (days == 0) {
+            // NẾU LÀ HÔM NAY: Lấy từ thời điểm chốt ca gần nhất (Đúng nghĩa "Ca hiện tại")
+            // Hoặc lấy từ đầu ngày hôm nay (tuỳ cái nào gần hơn)
+            LocalDateTime startOfDay = LocalDateTime.now().with(LocalTime.MIN);
+            startDate = lastShiftEnd.isAfter(startOfDay) ? lastShiftEnd : startOfDay;
+        } else {
+            // CÁC NGÀY TRƯỚC: Lấy theo ngày (ví dụ 3 ngày trước)
+            startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+        }
+
+        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
+
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
-        // Trả về Meta Data cho Frontend làm nút Phân trang
         response.put("data", page.getContent());
         response.put("totalPages", page.getTotalPages());
         response.put("totalElements", page.getTotalElements());
         response.put("currentPage", page.getNumber());
-        response.put("lastShiftEnd", lastShiftEnd);
+        response.put("lastShiftEnd", lastShiftEnd); // Frontend dùng cái này để tham chiếu
 
         return response;
     }
