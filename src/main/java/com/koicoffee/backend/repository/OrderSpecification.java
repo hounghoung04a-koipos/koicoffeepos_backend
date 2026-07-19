@@ -16,25 +16,27 @@ public class OrderSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Lọc theo khoảng thời gian chuẩn xác
-            if (startDate != null) {
+            // 1. Lọc theo khoảng thời gian (startDate và endDate truyền từ Controller)
+            if (startDate != null && endDate != null) {
+                predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+            } else if (startDate != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
-            }
-            if (endDate != null) {
+            } else if (endDate != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
             }
 
-            // Lọc theo trạng thái
-            if (status != null && !status.isEmpty() && !"ALL".equalsIgnoreCase(status)) {
+            // 2. Lọc theo trạng thái
+            if (status != null && !status.isEmpty() && !status.equals("ALL")) {
                 predicates.add(cb.equal(root.get("status"), status));
             }
 
-            // Lọc theo từ khóa (Mã đơn hàng)
-            if (keyword != null && !keyword.isEmpty()) {
-                predicates.add(cb.like(cb.lower(root.get("code")), "%" + keyword.toLowerCase() + "%"));
+            // 3. Lọc theo từ khóa (Mã đơn hoặc Tên nhân viên)
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String pattern = "%" + keyword.toLowerCase() + "%";
+                Predicate pCode = cb.like(cb.lower(root.get("code")), pattern);
+                Predicate pStaff = cb.like(cb.lower(root.get("staffName")), pattern);
+                predicates.add(cb.or(pCode, pStaff));
             }
-
-            query.distinct(true);
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
