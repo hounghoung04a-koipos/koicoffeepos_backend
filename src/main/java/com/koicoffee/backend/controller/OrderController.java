@@ -12,6 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.koicoffee.backend.repository.OrderSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.jpa.domain.Specification;
+import java.time.LocalTime;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -61,9 +68,15 @@ public class OrderController {
     }
 
     @GetMapping
-    public Map<String, Object> getAllOrders() {
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        List<Order> orders = orderRepository.findByCreatedAtAfterOrderByIdDesc(sevenDaysAgo);
+    public Map<String, Object> getOrdersForPOS(
+            @RequestParam(defaultValue = "0") int days, // 0 = Hôm nay, 3 = 3 ngày qua
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
+    ) {
+        // Bắt đầu từ 00:00:00 của 'days' ngày trước
+        LocalDateTime startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
+
+        Specification<Order> spec = OrderSpecification.filterOrders(startDate, null, null, null);
+        Page<Order> page = orderRepository.findAll(spec, pageable);
 
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
                 .map(CashRegister::getLastUpdated)
@@ -71,8 +84,46 @@ public class OrderController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
-        response.put("data", orders);
+        // Trả về Meta Data cho Frontend làm nút Phân trang
+        response.put("data", page.getContent());
+        response.put("totalPages", page.getTotalPages());
+        response.put("totalElements", page.getTotalElements());
+        response.put("currentPage", page.getNumber());
         response.put("lastShiftEnd", lastShiftEnd);
+
+        return response;
+    }
+
+    // SỬA LỖI TỬ HUYỆT: Không dùng orderRepository.findAll() nữa
+    @GetMapping("/shift-summary")
+    public Map<String, Object> getShiftSummary() {
+        LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
+                .map(CashRegister::getLastUpdated)
+                .orElse(LocalDateTime.MIN);
+
+        // Chỉ lấy những đơn hàng ĐÃ THANH TOÁN sau thời gian chốt ca
+        List<Order> shiftOrders = orderRepository.findPaidOrdersSince(lastShiftEnd);
+
+        long totalCash = 0;
+        long totalTransfer = 0;
+
+        for (Order o : shiftOrders) {
+            long finalPrice = Math.max(0, o.getTotalPrice() - (o.getDiscount() != null ? o.getDiscount() : 0));
+            if ("CASH".equalsIgnoreCase(o.getPaymentMethod())) {
+                totalCash += finalPrice;
+            } else if ("TRANSFER".equalsIgnoreCase(o.getPaymentMethod())) {
+                totalTransfer += finalPrice;
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("lastShiftEnd", lastShiftEnd);
+        response.put("totalCash", totalCash);
+        response.put("totalTransfer", totalTransfer);
+        response.put("totalRevenue", totalCash + totalTransfer);
+        response.put("totalOrders", shiftOrders.size());
+
         return response;
     }
 
@@ -341,41 +392,6 @@ public class OrderController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("status", "success");
-        return response;
-    }
-
-    @GetMapping("/shift-summary")
-    public Map<String, Object> getShiftSummary() {
-        LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
-                .map(CashRegister::getLastUpdated)
-                .orElse(LocalDateTime.MIN);
-
-        List<Order> shiftOrders = orderRepository.findAll().stream()
-                .filter(o -> "PAID".equals(o.getStatus()))
-                .filter(o -> o.getPaymentTime() != null && o.getPaymentTime().isAfter(lastShiftEnd))
-                .toList();
-
-        int totalCash = 0;
-        int totalTransfer = 0;
-
-        for (Order o : shiftOrders) {
-            long finalPrice = Math.max(0, o.getTotalPrice() - (o.getDiscount() != null ? o.getDiscount() : 0));
-
-            if ("CASH".equalsIgnoreCase(o.getPaymentMethod())) {
-                totalCash += finalPrice;
-            } else if ("TRANSFER".equalsIgnoreCase(o.getPaymentMethod())) {
-                totalTransfer += finalPrice;
-            }
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("lastShiftEnd", lastShiftEnd);
-        response.put("totalCash", totalCash);
-        response.put("totalTransfer", totalTransfer);
-        response.put("totalRevenue", totalCash + totalTransfer);
-        response.put("totalOrders", shiftOrders.size());
-
         return response;
     }
 
