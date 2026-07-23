@@ -87,6 +87,7 @@ public class OrderController {
     public Map<String, Object> getOrdersForPOS(
             @RequestParam(defaultValue = "CURRENT") String shiftType,
             @RequestParam(defaultValue = "0") int days,
+            @RequestParam(required = false, defaultValue = "ALL") String status, // Nhận param status từ Frontend
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC, size = 12) Pageable pageable
     ) {
         LocalDateTime lastShiftEnd = cashRegisterRepository.findById(1L)
@@ -105,16 +106,33 @@ public class OrderController {
             endDate = lastShiftEnd;
 
             if (days == 0) {
-                // Hôm nay: Từ đầu ngày hôm nay đến lúc chốt ca
                 startDate = LocalDateTime.now().with(LocalTime.MIN);
             } else {
-                // X ngày trước: Từ đầu ngày của X ngày trước đến lúc chốt ca
                 startDate = LocalDateTime.now().minusDays(days).with(LocalTime.MIN);
             }
         }
 
-        // Truyền cả startDate và endDate xuống OrderSpecification
-        Specification<Order> spec = OrderSpecification.filterOrders(startDate, endDate, null, null);
+        // Chuyển "ALL" thành null để backend không lọc cứng nếu lấy tất cả
+        String filterStatus = "ALL".equalsIgnoreCase(status) ? null : status;
+
+        // Specification cơ bản (lọc theo thời gian và trạng thái của ca)
+        Specification<Order> spec = OrderSpecification.filterOrders(startDate, endDate, filterStatus, null);
+
+        // 🚀 LOGIC KẾ THỪA: Ép backend trả thêm các đơn PENDING của ca trước
+        if ("CURRENT".equalsIgnoreCase(shiftType)) {
+            Specification<Order> pendingInheritSpec = (root, query, cb) ->
+                    cb.and(
+                            cb.equal(root.get("status"), "PENDING"),
+                            cb.lessThan(root.get("createdAt"), lastShiftEnd) // Các đơn tạo trước giờ chốt ca
+                    );
+
+            // Chỉ kế thừa nếu người dùng đang xem tab "Tất cả" hoặc tab "Chưa TT"
+            if (filterStatus == null || "PENDING".equalsIgnoreCase(filterStatus)) {
+                // Hợp nhất điều kiện: (Đơn ca hiện tại) HOẶC (Đơn PENDING ca cũ)
+                spec = Specification.where(spec).or(pendingInheritSpec);
+            }
+        }
+
         Page<Order> page = orderRepository.findAll(spec, pageable);
 
         Map<String, Object> response = new HashMap<>();
